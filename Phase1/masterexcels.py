@@ -138,8 +138,6 @@ with open("chm.txt", "r") as file:
 data_list = []
 count = 1
 for line in data:
-    print(count)
-    count+=1
     request_type_match = re.search(r"request_type=(\w+)", line)
 
     if request_type_match:
@@ -223,7 +221,7 @@ for chmjsondata in data_list:
 
     chmsheets_data[chmsheet_name].append(chmjsondata)  # Append row to the correct sheet
 
-excel_filename = "chm_master_dataa.xlsx"
+excel_filename = "chm_master_data.xlsx"
 with pd.ExcelWriter(excel_filename, engine='xlsxwriter') as writer:
     df_main.to_excel(writer, sheet_name="Main", index=False)  # Write main sheet
 
