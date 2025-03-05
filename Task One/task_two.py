@@ -74,6 +74,15 @@ def extract_values(text, channel, rank, columns):
 
     return row_data
 
+def get_channeldata(file_name,channel_data,ddr_utilization_values):
+    ch_part = file_name.split("_")[1].split(".")[0].upper()
+    if ch_part not in channel_data:
+        channel_data.update({ch_part:[]})
+    if ch_part not in ddr_utilization_values:
+        ddr_utilization_values.update({ch_part:"N/A"})
+
+    return channel_data,ddr_utilization_values
+
 def get_dynamic_channels_and_ranks(text):
     # Extract channel and rank from text based on pattern matching
     channels = list(set(re.findall(r"LP5:CH(\d)", text)))
@@ -84,13 +93,14 @@ def get_dynamic_channels_and_ranks(text):
 # Loop through each test folder (Test0, Test1, Test2, Test3)
 for test_folder in os.listdir(base_dir):
     if os.path.isdir(os.path.join(base_dir, test_folder)):
-        print(f"Processing folder: {test_folder}")
         
         # Initialize data structures for the main sheet and channel sheets
         main_sheet_data = []
-        channel_data = {f"CH{i}": [] for i in range(4)}  # CH0, CH1, CH2, CH3
-        ddr_utilization_values = {f"CH{i}": "N/A" for i in range(4)}  # Initialize DDR Utilization values
-
+        
+        # channel_data, ddr_utilization_values = get_channeldata_and_utilization_values()
+        channel_data = {}  # CH0, CH1, CH2, CH3
+        ddr_utilization_values = {}  # Initialize DDR Utilization values
+        
         # Define the path to the "Result" folder inside the current test folder
         result_folder = os.path.join(base_dir, test_folder, "Result")
         
@@ -104,8 +114,8 @@ for test_folder in os.listdir(base_dir):
         # Loop through all .log files in the folder
         for file_name in os.listdir(os.path.join(base_dir, test_folder)):
             if file_name.lower().startswith("mem_ch") and file_name.lower().endswith(".log"):
+                channel_data,ddr_utilization_values = get_channeldata(file_name,channel_data,ddr_utilization_values)
                 file_path = os.path.join(base_dir, test_folder, file_name)
-                print(f"Processing file: {file_path}")
 
                 # Read the file content
                 data = read_text_file(file_path)
@@ -116,7 +126,7 @@ for test_folder in os.listdir(base_dir):
                 # Get channels and ranks 
                 channels, ranks = get_dynamic_channels_and_ranks(data)
 
-                # Loop over the channels and ranks to gather data
+                # Loop over the channels and ranks to gather data                
                 for channel in channels:
                     data_rows = []
                     for rank in ranks:
