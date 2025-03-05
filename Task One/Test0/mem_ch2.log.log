@@ -1,0 +1,10 @@
+WCK:CK ratio calculated=5
+DRAM_Monitor Frequency = 120 MHz
+CK Frequency = 1432.785 MHz
+Final end time=1898765432
+1956234.543ns LP5:CH2 CS0 starttime = 1803456789, endtime = 1897654321, rd_byte_count = 94532, wr_byte_count = 51234, read_data_cycles = 24432.00, write_data_cycles = 11897.00, total_cycles = 298754.80, ddr_utilization = 14.10, num_precharge = 1678, num_refreshes = 5, num_r2w_switches = 128, num_w2r_switches = 103, num_bytes_per_activate = 92.00, num_auto_precharge = 180, average_num_banks_open = 4.35, average_num_bg_open = 3.21, num_wck_susp_cmd = 200, num_wck_sync_cmd = 330, num_ref_ab = 2, num_ref_pb = 1
+LP5:CH2_CS0 Write Bandwidth observed 945 Mbps
+LP5:CH2_CS0 Read Bandwidth observed 1885 Mbps
+1956234.543ns LP5:CH2 CS1 starttime = 1803456789, endtime = 1897654321, rd_byte_count = 51278, wr_byte_count = 29430, read_data_cycles = 13658.00, write_data_cycles = 7345.00, total_cycles = 298754.80, ddr_utilization = 7.12, num_precharge = 735, num_refreshes = 2, num_r2w_switches = 23, num_w2r_switches = 12, num_bytes_per_activate = 107.00, num_auto_precharge = 78, average_num_banks_open = 2.99, average_num_bg_open = 1.95, num_wck_susp_cmd = 170, num_wck_sync_cmd = 265, num_ref_ab = 0, num_ref_pb = 1
+LP5:CH2_CS1 Write Bandwidth observed 590 Mbps
+LP5:CH2_CS1 Read Bandwidth observed 1023 Mbps
