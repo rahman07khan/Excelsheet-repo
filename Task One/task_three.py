@@ -42,6 +42,38 @@ def get_all_txt_files(root_folder):
                 txt_files.append(os.path.join(folder, file))
     return txt_files
 
+def get_channel_data(folder_name):
+    channel_data = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and '_ch' in f]
+    channellist = ""  # Initialize channellist as an empty string
+    for i in range(4):
+        is_okay = False
+        for channelobj in channel_data:
+            num = str(i)
+            
+            if num in channelobj:
+                is_okay = True
+                channellist += "1" if not channellist else ",1"
+        if not is_okay:
+            channellist += "0" if not channellist else ",0"
+
+    return channellist
+
+def get_opcode_data(log_file):
+    opcodedata = ''
+    already_opcodes = []
+    with open(log_file, 'r') as file:
+        for line in file:
+            if "[AXI_PERFORMANCE_CHK]:" not in line:
+                opcode_match = re.search(r'trans_type=([^, ]+)', line)
+
+                if opcode_match:
+                    opcode_value = opcode_match.group(1)
+                    if opcode_value not in already_opcodes:
+                        already_opcodes.append(opcode_value)
+                if already_opcodes:
+                    opcodedata  = ', '.join(already_opcodes)
+    return opcodedata   
+
 from pathlib import Path
 
 # Get the directory where the script is located
@@ -51,19 +83,24 @@ base_dir = Path(__file__).resolve().parent
 if not os.path.exists(base_dir):
     print(f"Error: Directory {base_dir} not found!")
     exit()
-
 # Get all .txt files recursively
 log_files = get_all_txt_files(base_dir)
 
 # Parse all log files dynamically maintaining order
 all_data = []
 column_order = []
+already_folderin = []
 for log_file in log_files:
     folder_name = os.path.basename(os.path.dirname(log_file))  # Extracts "Test0", "Test1", etc.
+    channellist =  get_channel_data(folder_name)
+    opcodedata = get_opcode_data(log_file)
     file_data = parse_log_file(log_file, column_order)
+
     for entry in file_data:
         entry["FolderName"] = folder_name
         entry["FileName"] = os.path.splitext(os.path.basename(log_file))[0]
+        entry["Channel"] = channellist
+        entry["OPCODE"] = opcodedata
         all_data.append(entry)
 
 # Convert to DataFrame
@@ -71,13 +108,13 @@ df = pd.DataFrame(all_data)
 
 # Pivot the DataFrame dynamically following column order
 if not df.empty:
-    df_pivot = df.pivot_table(index=["FolderName", "FileName", "Master"], 
+    df_pivot = df.pivot_table(index=["FolderName", "FileName", "Master", "Channel", "OPCODE"], 
                               columns="Key", 
                               values="Value", 
                               aggfunc='first').reset_index()
     
     # Ensure columns are in correct order
-    ordered_columns = [col for col in ["FolderName", "FileName", "Master"] + column_order if col in df_pivot.columns]
+    ordered_columns = [col for col in ["FolderName", "FileName", "Master","Channel", "OPCODE"] + column_order if col in df_pivot.columns]
     df_pivot = df_pivot[ordered_columns]
     
     # Export to Excel
