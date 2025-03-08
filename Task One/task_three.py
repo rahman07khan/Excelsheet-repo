@@ -41,15 +41,32 @@ def get_all_txt_files(root_folder):
             if file.endswith(".txt"):
                 txt_files.append(os.path.join(folder, file))
     return txt_files
+# print the channel from left to right 
 
+# def get_channel_data(folder_name):
+#     channel_data = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and '_ch' in f]
+#     channellist = ""  # Initialize channellist as an empty string
+#     for i in range(4):
+#         is_okay = False
+#         for channelobj in channel_data:
+#             num = str(i)
+            
+#             if num in channelobj:
+#                 is_okay = True
+#                 channellist += "1" if not channellist else ",1"
+#         if not is_okay:
+#             channellist += "0" if not channellist else ",0"
+
+#     return channellist
+
+# print the channel from right to left 
 def get_channel_data(folder_name):
     channel_data = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and '_ch' in f]
-    channellist = ""  # Initialize channellist as an empty string
-    for i in range(4):
+    channellist = "" 
+    for i in range(3, -1, -1):  # Iterate from 3 to 0 (Right to Left)
         is_okay = False
         for channelobj in channel_data:
             num = str(i)
-            
             if num in channelobj:
                 is_okay = True
                 channellist += "1" if not channellist else ",1"
@@ -58,20 +75,20 @@ def get_channel_data(folder_name):
 
     return channellist
 
+
 def get_opcode_data(log_file):
-    opcodedata = ''
-    already_opcodes = []
+    opcode_counts = {}  # Dictionary to store opcode counts
     with open(log_file, 'r') as file:
         for line in file:
             if "[AXI_PERFORMANCE_CHK]:" not in line:
                 opcode_match = re.search(r'trans_type=([^, ]+)', line)
-
                 if opcode_match:
                     opcode_value = opcode_match.group(1)
-                    if opcode_value not in already_opcodes:
-                        already_opcodes.append(opcode_value)
-                if already_opcodes:
-                    opcodedata  = ', '.join(already_opcodes)
+                    # Increment the count for the opcode
+                    opcode_counts[opcode_value] = opcode_counts.get(opcode_value, 0) + 1
+
+    # Format the opcode counts as "OPCODE:COUNT, OPCODE:COUNT"
+    opcodedata = ', '.join([f"{opcode}:{count}" for opcode, count in opcode_counts.items()])
     return opcodedata   
 
 from pathlib import Path
@@ -123,3 +140,5 @@ if not df.empty:
     print(f"Processed all log files and saved to {excel_output_file}")
 else:
     print("No valid data extracted from log files.")
+
+
