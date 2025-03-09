@@ -101,6 +101,8 @@ def get_opcode_data(log_file):
 def get_req_res_urgency(log_file):
     try:
         master_req_res_dict= {}
+        unoderreq_res_dict = {}
+        folder_name = os.path.basename(os.path.dirname(log_file))
         file_name = os.path.splitext(os.path.basename(log_file))[0] 
         with open(log_file, 'r') as file:
             for line in file:
@@ -117,6 +119,12 @@ def get_req_res_urgency(log_file):
                         else:
                             masterkey=master_req_res_dict[master_value]
 
+                        folder_file_master = f"{folder_name}_{master_value}"
+                        if folder_file_master not in unoderreq_res_dict:
+                            unoderreq_res_dict[folder_file_master] = {"Address":[],"Request":[],"Response":[]}
+                            unorder_masterkey=unoderreq_res_dict[folder_file_master]
+                        else:
+                            unorder_masterkey=unoderreq_res_dict[folder_file_master]
 
                     if "log_axi_performance_monitor" in line:
                         arqos_match = re.search(r'arqos=([^, ]+)', line)
@@ -129,20 +137,34 @@ def get_req_res_urgency(log_file):
                             awqos_value = awqos_match.group(1)
                             masterkey['Response Urgency'][awqos_value] = masterkey['Response Urgency'].get(awqos_value, 0) + 1
                             # resurgency_dict[awqos_value] = resurgency_dict.get(awqos_value, 0) + 1
-
+                        if arqos_value != awqos_value:
+                            awaddr_match = re.search(r'awaddr=([^, ]+)', line)
+                            # araddr_match = re.search(r'araddr=([^, ]+)', line)
+                            if awaddr_match:
+                                unorder_masterkey['Address'].append(awaddr_match.group(1))
+                            unorder_masterkey["Request"].append(arqos_value)
+                            unorder_masterkey["Response"].append(awqos_value)
 
                     elif "log_qns_performance_monitor" in line and f"master={master_valueobj}" in line:
+                        
                         urgency_match = re.search(r'urgency=([^, ]+)', line)
                         if urgency_match:
                             urgency_value = urgency_match.group(1)
                             masterkey['Request Urgency'][urgency_value] = masterkey['Request Urgency'].get(urgency_value, 0) + 1
-                            # requrgency_dict[urgency_value] = requrgency_dict.get(urgency_value, 0) + 1
                     
                         res_urgency_match = re.search(r'Rsp_C_Urgency=([^, ]+)', line)
                         if res_urgency_match:
                             res_urgency_value = res_urgency_match.group(1)
                             masterkey['Response Urgency'][res_urgency_value] = masterkey['Response Urgency'].get(res_urgency_value, 0) + 1
-                            # resurgency_dict[res_urgency_value] = resurgency_dict.get(res_urgency_value, 0) + 1
+
+                        if urgency_value != res_urgency_value:
+                            addr_match = re.search(r'addr=([^, ]+)', line)
+                            if addr_match:
+                                unorder_masterkey['Address'].append(addr_match.group(1))
+
+                            unorder_masterkey["Request"].append(urgency_value)
+                            unorder_masterkey["Response"].append(res_urgency_value)
+
                     elif "log_chi_performance_monitor" in line and f"master={master_valueobj}" in line:
                         urgency_match = re.search(r'rEQFLIT_QOS:(\d+)', line)
                         if urgency_match:
@@ -153,10 +175,14 @@ def get_req_res_urgency(log_file):
                         if res_urgency_match:
                             res_urgency_value = res_urgency_match.group(1)
                             masterkey['Response Urgency'][res_urgency_value] = masterkey['Response Urgency'].get(res_urgency_value, 0) + 1
-                            # resurgency_dict[res_urgency_value] = resurgency_dict.get(res_urgency_value, 0) + 1
-                    
-                    # master_req_res_dict[master_value]['Request Urgency'] = requrgency_dict
-                    # master_req_res_dict[master_value]['Response Urgency'] = resurgency_dict
+
+                        if urgency_value != res_urgency_value:
+                            reqflit_addr_match = re.search(r"rEQFLIT_ADDR:'h([0-9a-fA-F]+)", line)
+                            if reqflit_addr_match:
+                                unorder_masterkey['Address'].append(f"0x{reqflit_addr_match.group(1)}")
+                            unorder_masterkey["Request"].append(urgency_value)
+                            unorder_masterkey["Response"].append(res_urgency_value)                    
+
         for data,value in master_req_res_dict.items():
             if len(value['Request Urgency']) > 0:
                 value['Request Urgency'] = ", ".join(f"{key}:{value}" for key, value in value['Request Urgency'].items())
@@ -166,8 +192,7 @@ def get_req_res_urgency(log_file):
                 value['Response Urgency'] = ", ".join(f"{key}:{value}" for key, value in value['Response Urgency'].items())
             else:
                 value['Response Urgency']="N/A"
-        
-        return master_req_res_dict
+        return master_req_res_dict, unoderreq_res_dict
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -189,12 +214,14 @@ log_files = get_all_txt_files(base_dir)
 all_data = []
 column_order = []
 already_folderin = []
+unorder_req_res_list = []
 for log_file in log_files:
     folder_name = os.path.basename(os.path.dirname(log_file))  # Extracts "Test0", "Test1", etc.
     channellist =  get_channel_data(folder_name)
     opcodedata = get_opcode_data(log_file)
-    master_req_res_dict = get_req_res_urgency(log_file)
-    print("master_req_res_dict",master_req_res_dict)
+    master_req_res_dict, unoderreq_res_dict = get_req_res_urgency(log_file)
+    unorder_req_res_list.append(unoderreq_res_dict)
+    
     # """ ONLY USE MATER USING OPCODE REMOVE NONE """
     file_data = parse_log_file(log_file, column_order,opcodedata,master_req_res_dict)
 
@@ -233,5 +260,6 @@ if not df.empty:
 
 else:
     print("No valid data extracted from log files.")
+
 
 
