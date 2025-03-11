@@ -1,0 +1,15 @@
+Window0=0.0
+Window74=1.27
+Window5=7.62
+Window-15490=1.27
+Window5=11.43
+Window-15487=1.27
+Window5=2.54
+Window115=1.27
+Window5=1.27
+Window-17205=1.27
+Window-16214=1.27
+Window5=1.27
+Window-94=1.27
+Window5=2.54
+Window-15516=1.27
