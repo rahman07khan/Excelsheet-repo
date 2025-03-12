@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import re
 from collections import OrderedDict
+from Calcinstantaneious_BW import *
 
 def parse_log_file(file_path, column_order, opcodemaster,master_req_res_dict):
     data = []
@@ -51,7 +52,7 @@ def get_all_txt_files(root_folder):
     txt_files = []
     for folder, _, files in os.walk(root_folder):
         for file in files:
-            if file.endswith(".txt"):
+            if file.endswith(".txt") and not file.endswith(("TempFile.txt", "WindowWiseBW.txt","Temp.txt")):
                 txt_files.append(os.path.join(folder, file))
     return txt_files
 
@@ -74,6 +75,7 @@ def get_channel_data(folder_name):
 
 
 def get_opcode_data(log_file):
+    master_data = []
     master_opcode = {}
     file_name = os.path.splitext(os.path.basename(log_file))[0] 
     with open(log_file, 'r') as file:
@@ -85,6 +87,7 @@ def get_opcode_data(log_file):
                     master_value = f"{file_name}_{master_value}"
                     
                     if master_value not in master_opcode:
+                        master_data.append(master_value)
                         master_opcode[master_value] = {}
                     
                     opcode_match = re.search(r'trans_type=([^, ]+)', line)
@@ -95,7 +98,7 @@ def get_opcode_data(log_file):
     # Format the opcode counts as "OPCODE:COUNT, OPCODE:COUNT"
     opcodedata = {master: ', '.join([f"{opcode}:{count}" for opcode, count in opcodes.items()]) 
                   for master, opcodes in master_opcode.items()}
-    return opcodedata   
+    return opcodedata,master_data
 
 
 def get_req_res_urgency(log_file):
@@ -216,11 +219,16 @@ column_order = []
 already_folderin = []
 unorder_req_res_list = []
 for log_file in log_files:
+    
     folder_name = os.path.basename(os.path.dirname(log_file))  # Extracts "Test0", "Test1", etc.
     channellist =  get_channel_data(folder_name)
-    opcodedata = get_opcode_data(log_file)
+    opcodedata,master_data = get_opcode_data(log_file)
     master_req_res_dict, unoderreq_res_dict = get_req_res_urgency(log_file)
     unorder_req_res_list.append(unoderreq_res_dict)
+    
+    logpath = os.path.join(base_dir, log_file)
+    Window = 100
+    updating_windowise_bw = Update_WindowWiseBW(logpath,master_data,Window)    
     
     # """ ONLY USE MATER USING OPCODE REMOVE NONE """
     file_data = parse_log_file(log_file, column_order,opcodedata,master_req_res_dict)
