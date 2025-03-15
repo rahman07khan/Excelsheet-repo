@@ -56,6 +56,17 @@ def get_all_txt_files(root_folder):
                 txt_files.append(os.path.join(folder, file))
     return txt_files
 
+def remove_all_starttime_files(root_folder):
+    for folder, _, files in os.walk(root_folder):
+        for file in files:
+            if file.endswith("TimeTemp.txt"):
+                file_path = os.path.join(folder, file)
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting {file_path}: {e}")
+
 # print the channel from right to left 
 def get_channel_data(folder_name):
     channel_data = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and '_ch' in f]
@@ -212,7 +223,7 @@ if not os.path.exists(base_dir):
     exit()
 # Get all .txt files recursively
 log_files = get_all_txt_files(base_dir)
-
+remove_starttime_files = remove_all_starttime_files(base_dir)
 # Parse all log files dynamically maintaining order
 all_data = []
 column_order = []

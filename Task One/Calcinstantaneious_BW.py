@@ -18,7 +18,6 @@ def createGrepFileExcludeString(LogPath, Intf, tempFile, ExcludedString,master):
         print(f"Error creating grep file--------: {e}")
 
 def createGrepFile(LogPath, Intf, tempFile, master):
-    print("createGrepFile---",LogPath,"tempFile------>",tempFile)
     """Creates a filtered file with lines containing the specified interface."""
     if not os.path.exists(LogPath):
         print(f"Skipping: File '{LogPath}' not found.")
@@ -34,49 +33,60 @@ def createGrepFile(LogPath, Intf, tempFile, master):
 
 def CalStartTime(MasterList, LogPath):
     grep_line = "PERFORMANCE_CHK]: overall StartTime is"
-    MinStartTime = float('inf')
-
-    for master in MasterList:
-        if master.startswith("chm"):
-            bw_monitor_last_name = "chm.txt"
-        elif master.startswith(("qnm", "qns")):
-            bw_monitor_last_name = "qnm.txt"
-        else:
-            continue
-        if LogPath.endswith('.txt'):
-            FilePath = os.path.dirname(LogPath)  
-        else:
-            FilePath = LogPath
-
-        # FilePath = os.path.join(LogPath, f"{master}.txt")
-        TempFilePath = os.path.join(FilePath, "StartTimeTemp.txt")
-
-        if not os.path.exists(FilePath):
-            print(f"Skipping: File '{FilePath}' not found.")
-            continue
+    minstarttime_dict = {}
+    
+    if LogPath.endswith('.txt'):
+        FilePath = os.path.dirname(LogPath)  
+    else:
+        FilePath = LogPath
+    TempFilePath = os.path.join(FilePath, "StartTimeTemp.txt")
+    
+    if not os.path.exists(FilePath):
+        print(f"Skipping: File '{FilePath}' not found.")
+        return
+    
+    
+    results = {}
+    already_line = ""
+    try:
+        with open(LogPath, 'r') as infile:
+            for line in infile:
+                if grep_line in line:
+                    master_name = already_line.split("[Master ")[1].split("]")[0].strip()
+                    results[master_name] = f"{master_name} : {line.strip()}"
+                else:
+                    already_line = line
+        with open(TempFilePath, 'a') as outfile:
+            for key, value in results.items():
+                outfile.write(value + "\n")
         
-        createGrepFile(LogPath, grep_line, TempFilePath,master)
+        print(f"Filtered data written to '{TempFilePath}'")
+    except IOError as io_err:
+        print(f"File I/O error: {io_err}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
-        if not os.path.exists(TempFilePath):
-            print(f"Skipping: File '{TempFilePath}' not created.")
-            continue
+    if not os.path.exists(TempFilePath):
+        print(f"Skipping: File '{TempFilePath}' not created.")
+        return
+    try:
+        with open(TempFilePath, "r") as filePtr:
+            for lines in filePtr:
+                MinStartTime = float('inf')
+                LineSplit = re.split(r'\s+', lines)
+                if len(LineSplit) > 4:
+                    StartTime = LineSplit[6].replace("ns", "").replace(",", "").strip()
+                    MinStartTime = min(MinStartTime, float(StartTime))
+                    mastername = LineSplit[0].split("_")[1].upper()
+                    minstarttime_dict[mastername] = MinStartTime
+    except ValueError as e:
+        print(f"Error parsing StartTime value '{StartTime}': {e}")
+    except Exception as e:
+        print(f"Error reading StartTimeTemp: {e}")
+    return minstarttime_dict
 
-        try:
-            with open(TempFilePath, "r") as filePtr:
-                for lines in filePtr:
-                    LineSplit = re.split(r'\s+', lines)
-                    if len(LineSplit) > 4:
-                        StartTime = LineSplit[4].replace("ns", "").replace(",", "").strip()
-                        MinStartTime = min(MinStartTime, float(StartTime))
-        except ValueError as e:
-            print(f"Error parsing StartTime value '{StartTime}': {e}")
-        except Exception as e:
-            print(f"Error reading StartTimeTemp: {e}")
 
-    return MinStartTime if MinStartTime != float('inf') else 0.0
-
-
-def CalcCHI_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master):
+def CalcCHI_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,master):
     createGrepFileExcludeString(FilePath, Intf, tempFile, "start_time=0.000001",master)
     try:
         with open(tempFile, "r") as filePtr, open(UpdateFile, "w") as filePtr_Write:
@@ -88,7 +98,7 @@ def CalcCHI_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master
             for line in filePtr:
                 start_match = re.search(r"start_time=([\d.e+-]+)", line)
                 end_match = re.search(r"end_time=([\d.e+-]+)", line)
-
+                master_match = re.search(r"master=([A-Za-z])", line)
                 if not start_match or not end_match:
                     print(f"Skipping line (missing start/end time): {line.strip()}")
                     continue  # Skip invalid lines
@@ -96,10 +106,11 @@ def CalcCHI_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master
                 try:
                     StartTime = float(start_match.group(1))
                     EndTime = float(end_match.group(1))
+                    master_name = master_match.group(1)
                 except ValueError:
                     print(f"Skipping line (invalid float conversion): {line.strip()}")
                     continue  # Skip lines where conversion fails
-
+                MinStartTime = minstarttime_dict[master_name]
                 Len = 32  # Assuming 32-byte transactions
                 CumlByteCount += Len
                 SimTime = EndTime - MinStartTime
@@ -115,7 +126,7 @@ def CalcCHI_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master
     except Exception as e:
         print(f"Error processing CalcCHI_BW: {e}")
 
-def CalcQNS_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master):
+def CalcQNS_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,master):
     createGrepFile(FilePath, Intf, tempFile, master)
     try:
         with open(tempFile, "r") as filePtr, open(UpdateFile, "w") as filePtr_Write:
@@ -125,9 +136,13 @@ def CalcQNS_BW(FilePath, Intf, tempFile, MinStartTime, Window, UpdateFile,master
             PrevTransactionByteCount = 0
             
             for line in filePtr:
+                master_match = re.search(r"master=([A-Za-z])", line)
+                master_name = master_match.group(1)
+                MinStartTime = minstarttime_dict[master_name]
                 SplitLines = line.split(",")
                 Len = int(SplitLines[8].split("=")[1])
-                EndTime = float(SplitLines[5].split("=")[1]) / 1000
+                endtime = float(SplitLines[5].split("=")[1])
+                EndTime = endtime/1000
                 CumlByteCount += Len
                 SimTime = EndTime - MinStartTime
                 NthWindow = int(SimTime / Window)
