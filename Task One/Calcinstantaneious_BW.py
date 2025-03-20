@@ -99,6 +99,7 @@ def CalcCHI_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 start_match = re.search(r"start_time=([\d.e+-]+)", line)
                 end_match = re.search(r"end_time=([\d.e+-]+)", line)
                 master_match = re.search(r"master=([A-Za-z])", line)
+                transtype_match = re.search(r"trans_type=(\w+)", line)
                 if not start_match or not end_match:
                     print(f"Skipping line (missing start/end time): {line.strip()}")
                     continue  # Skip invalid lines
@@ -107,6 +108,7 @@ def CalcCHI_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                     StartTime = float(start_match.group(1))
                     EndTime = float(end_match.group(1))
                     master_name = master_match.group(1)
+                    transtype = transtype_match.group(1)
                 except ValueError:
                     print(f"Skipping line (invalid float conversion): {line.strip()}")
                     continue  # Skip lines where conversion fails
@@ -119,7 +121,8 @@ def CalcCHI_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 if NthWindow != PrevNthWindow:
                     WindowByteCount = PrevTransactionByteCount - PrevWindowByteCount
                     WindowBW = WindowByteCount / Window
-                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW}\n")
+                    transtype = "WRITE" if transtype in ["CHI_RSP_OPC_COMP","CHI_REQ_OPC_WRITENOSNPFULL"] else "READ"
+                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={SimTime},Endtime={EndTime},Transtype={transtype}\n")
                     PrevNthWindow = NthWindow
                     PrevWindowByteCount = PrevTransactionByteCount
                 PrevTransactionByteCount = CumlByteCount
@@ -137,7 +140,10 @@ def CalcQNS_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
             
             for line in filePtr:
                 master_match = re.search(r"master=([A-Za-z])", line)
+                transtype_match = re.search(r"trans_type=(\w+)", line)
+
                 master_name = master_match.group(1)
+                trans_type = transtype_match.group(1)
                 MinStartTime = minstarttime_dict[master_name]
                 SplitLines = line.split(",")
                 Len = int(SplitLines[8].split("=")[1])
@@ -149,13 +155,55 @@ def CalcQNS_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 if NthWindow != PrevNthWindow:
                     WindowByteCount = PrevTransactionByteCount - PrevWindowByteCount
                     WindowBW = WindowByteCount / Window
-                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW}\n")
+                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={SimTime},Endtime={EndTime},Transtype={trans_type}\n")
                     PrevNthWindow = NthWindow
                     PrevWindowByteCount = PrevTransactionByteCount
 
                 PrevTransactionByteCount = CumlByteCount
     except Exception as e:
         print(f"Error processing CalcQNS_BW: {e}")
+
+def CalcALM_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,master):
+    createGrepFileExcludeString(FilePath, Intf, tempFile, "start_time=0.000001",master)
+    try:
+        with open(tempFile, "r") as filePtr, open(UpdateFile, "w") as filePtr_Write:
+            CumlByteCount = 0
+            PrevNthWindow = 0
+            PrevWindowByteCount = 0
+            PrevTransactionByteCount = 0
+            
+            for line in filePtr:
+                start_match = re.search(r"start_time=([\d.e+-]+)", line)
+                end_match = re.search(r"end_time=([\d.e+-]+)", line)
+                master_match = re.search(r"master=([A-Za-z])", line)
+                transtype_match = re.search(r"trans_type=(\w+)", line)
+                if not start_match or not end_match:
+                    print(f"Skipping line (missing start/end time): {line.strip()}")
+                    continue  # Skip invalid lines
+
+                try:
+                    StartTime = float(start_match.group(1))
+                    EndTime = float(end_match.group(1))
+                    master_name = master_match.group(1)
+                    trans_type = transtype_match.group(1)
+                except ValueError:
+                    print(f"Skipping line (invalid float conversion): {line.strip()}")
+                    continue  # Skip lines where conversion fails
+                MinStartTime = minstarttime_dict[master_name]
+                Len = 32  # Assuming 32-byte transactions
+                CumlByteCount += Len
+                SimTime = EndTime - MinStartTime
+                NthWindow = int(SimTime / Window)
+
+                if NthWindow != PrevNthWindow:
+                    WindowByteCount = PrevTransactionByteCount - PrevWindowByteCount
+                    WindowBW = WindowByteCount / Window
+                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={SimTime},Endtime={EndTime},Transtype={trans_type}\n")
+                    PrevNthWindow = NthWindow
+                    PrevWindowByteCount = PrevTransactionByteCount
+                PrevTransactionByteCount = CumlByteCount
+    except Exception as e:
+        print(f"Error processing CalcCHI_BW: {e}")
 
 
 def Update_WindowWiseBW(LogPath,MasterList,Window):
@@ -182,6 +230,6 @@ def Update_WindowWiseBW(LogPath,MasterList,Window):
         elif master.startswith(("qnm", "qns")):
             CalcQNS_BW(LogPath, "log_qns_performance_monitor", TempFile, SimulationStartTime, Window, UpdateFile,master)
         elif master.startswith("alm"):
-            print("Oops! Support is not yet available for AXI master")
+            CalcALM_BW(LogPath, "log_axi_performance_monitor", TempFile, SimulationStartTime, Window, UpdateFile,master)
         else:
             print("Please pass correct master name")
