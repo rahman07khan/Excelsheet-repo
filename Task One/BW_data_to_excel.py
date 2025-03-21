@@ -39,14 +39,14 @@ def processTestFolder(directory, test_name):
     with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
         # Create Main Sheet (Windows as rows, Masters as columns) & Sort Windows
         df_main = pd.DataFrame.from_dict(master_data, orient="index").fillna(0)
-        df_main = df_main.sort_index(key=lambda x: x.str.extract('(\d+)')[0].astype(int))  # Sort by Window number
+        df_main = df_main.sort_index(key=lambda x: x.str.extract(r'(\d+)')[0].astype(int))  # Sort by Window number
         df_main.to_excel(writer, sheet_name="Main")
 
         # Create Master Sheets (Each master with READ/WRITE counts) & Sort Windows
         for master, window_data in transaction_counts.items():
             df_master = pd.DataFrame.from_dict({w: {"READ": d["READ"], "WRITE": d["WRITE"]} for w, d in window_data.items()}, orient="index").fillna(0)
             df_master.insert(0, master, df_main[master])  # Add master values from Main Sheet
-            df_master = df_master.sort_index(key=lambda x: x.str.extract('(\d+)')[0].astype(int))  # Sort by Window number
+            df_master = df_master.sort_index(key=lambda x: x.str.extract(r'(\d+)')[0].astype(int))  # Sort by Window number
             
             df_master.to_excel(writer, sheet_name=master, index=True)
 
