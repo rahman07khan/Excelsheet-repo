@@ -63,7 +63,7 @@ def remove_all_starttime_files(root_folder):
                 file_path = os.path.join(folder, file)
                 try:
                     os.remove(file_path)
-                    print(f"Deleted: {file_path}")
+                    # print(f"Deleted: {file_path}")
                 except Exception as e:
                     print(f"Error deleting {file_path}: {e}")
 

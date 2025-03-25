@@ -3,7 +3,6 @@ import re
 
 
 def createGrepFileExcludeString(LogPath, Intf, tempFile, ExcludedString,master):
-    print("createGrepFileExcludeString",LogPath,"tempFile",tempFile)
     """Creates a filtered file with lines containing Intf but excluding ExcludedString."""
     if not os.path.exists(LogPath):
         print(f"Skipping: File '{LogPath}' not found.")
@@ -78,7 +77,13 @@ def CalStartTime(MasterList, LogPath):
                     StartTime = LineSplit[6].replace("ns", "").replace(",", "").strip()
                     MinStartTime = min(MinStartTime, float(StartTime))
                     mastername = LineSplit[0].split("_")[1].upper()
-                    minstarttime_dict[mastername] = MinStartTime
+                    # minstarttime_dict[mastername] = MinStartTime
+                    EndTime = LineSplit[9].replace("ns", "").replace(",", "").strip()
+                    MaxEndTime = float(EndTime)
+                    # mastername = LineSplit[0].split("_")[1].upper()
+                    minstarttime_dict[mastername] = {}
+                    minstarttime_dict[mastername]['MinStartTime'] = MinStartTime
+                    minstarttime_dict[mastername]['MaxEndTime'] = MaxEndTime
     except ValueError as e:
         print(f"Error parsing StartTime value '{StartTime}': {e}")
     except Exception as e:
@@ -114,7 +119,8 @@ def CalcCHI_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 except ValueError:
                     print(f"Skipping line (invalid float conversion): {line.strip()}")
                     continue  # Skip lines where conversion fails
-                MinStartTime = minstarttime_dict[master_name]
+                MinStartTime = minstarttime_dict[master_name]['MinStartTime']
+                MinStartTime = minstarttime_dict[master_name]['MinStartTime']
                 Len = 32  # Assuming 32-byte transactions
                 CumlByteCount += Len
                 SimTime = EndTime - MinStartTime
@@ -148,7 +154,8 @@ def CalcQNS_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 master_name = master_match.group(1)
                 trans_type = transtype_match.group(1)
                 opcode_val = opcode_match.group(1)
-                MinStartTime = minstarttime_dict[master_name]
+                MinStartTime = minstarttime_dict[master_name]['MinStartTime']
+                MaxEndTime = minstarttime_dict[master_name]['MaxEndTime']
                 SplitLines = line.split(",")
                 Len = int(SplitLines[8].split("=")[1])
                 endtime = float(SplitLines[5].split("=")[1])
@@ -159,7 +166,7 @@ def CalcQNS_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 if NthWindow != PrevNthWindow:
                     WindowByteCount = PrevTransactionByteCount - PrevWindowByteCount
                     WindowBW = WindowByteCount / Window
-                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={SimTime},Endtime={EndTime},Transtype={trans_type},Opcode={opcode_val}\n")
+                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={MinStartTime},Endtime={MaxEndTime},Transtype={trans_type},Opcode={opcode_val}\n")
                     PrevNthWindow = NthWindow
                     PrevWindowByteCount = PrevTransactionByteCount
 
@@ -193,7 +200,8 @@ def CalcALM_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 except ValueError:
                     print(f"Skipping line (invalid float conversion): {line.strip()}")
                     continue  # Skip lines where conversion fails
-                MinStartTime = minstarttime_dict[master_name]
+                MinStartTime = minstarttime_dict[master_name]['MinStartTime']
+                MaxEndTime = minstarttime_dict[master_name]['MaxEndTime']
                 Len = 32  # Assuming 32-byte transactions
                 CumlByteCount += Len
                 SimTime = EndTime - MinStartTime
@@ -202,7 +210,7 @@ def CalcALM_BW(FilePath, Intf, tempFile, minstarttime_dict, Window, UpdateFile,m
                 if NthWindow != PrevNthWindow:
                     WindowByteCount = PrevTransactionByteCount - PrevWindowByteCount
                     WindowBW = WindowByteCount / Window
-                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={SimTime},Endtime={EndTime},Transtype={trans_type}\n")
+                    filePtr_Write.write(f"Window{PrevNthWindow}={WindowBW},Starttime={MinStartTime},Endtime={MaxEndTime},Transtype={trans_type}\n")
                     PrevNthWindow = NthWindow
                     PrevWindowByteCount = PrevTransactionByteCount
                 PrevTransactionByteCount = CumlByteCount
