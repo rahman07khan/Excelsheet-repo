@@ -10,6 +10,7 @@ def parse_file(filepath):
     master_data = defaultdict(float)
     transaction_counts = defaultdict(lambda: {"READ": 0, "WRITE": 0})
     time_data = defaultdict(lambda: {"Starttime": None, "Endtime": None})
+    urgency_counts = defaultdict(lambda: {"REQ_Urgency": defaultdict(int), "RES_Urgency": defaultdict(int)})
     opcode_counts = defaultdict(lambda: defaultdict(int))
     
     with open(filepath, 'r') as file:
@@ -29,24 +30,30 @@ def parse_file(filepath):
                     time_data[window]["Starttime"] = float(value)
                 elif key == "Endtime":
                     time_data[window]["Endtime"] = float(value)
+                elif key == "REQ_Urgency":
+                    urgency_counts[window]["REQ_Urgency"][int(value)] += 1
+                elif key == "RES_Urgency":
+                    urgency_counts[window]["RES_Urgency"][int(value)] += 1
             
             if opcode_value:
-                opcode_counts[window][opcode_value] += 1
+                opcode_counts[window][opcode_value] += 1  
     
-    return master_name, master_data, transaction_counts, time_data, opcode_counts
+    return master_name, master_data, transaction_counts, time_data, urgency_counts, opcode_counts
 
 def processTestFolder(directory, test_name):
     master_data = defaultdict(lambda: defaultdict(float))
     transaction_counts = defaultdict(lambda: defaultdict(lambda: {"READ": 0, "WRITE": 0}))
     time_data = defaultdict(lambda: defaultdict(lambda: {"Starttime": None, "Endtime": None}))
+    urgency_counts = defaultdict(lambda: defaultdict(lambda: {"REQ_Urgency": defaultdict(int), "RES_Urgency": defaultdict(int)}))
     opcode_counts = defaultdict(lambda: defaultdict(int))
     windowwise_time_data = defaultdict(lambda: {"Starttime": None, "Endtime": None})
     total_read_write = defaultdict(lambda: {"READ": 0, "WRITE": 0})
+    total_urgency = defaultdict(lambda: {"REQ_Urgency": defaultdict(int), "RES_Urgency": defaultdict(int)})
     
     for filename in os.listdir(directory):
         if filename.endswith("WindowWiseBW.txt"):
             filepath = os.path.join(directory, filename)
-            master_name, m_data, t_counts, t_data, o_counts = parse_file(filepath)
+            master_name, m_data, t_counts, t_data, u_counts, o_counts = parse_file(filepath)
             
             for window, value in m_data.items():
                 master_data[window][master_name] = value
@@ -60,6 +67,11 @@ def processTestFolder(directory, test_name):
                 if times["Endtime"] is not None and (windowwise_time_data[window]["Endtime"] is None or times["Endtime"] > windowwise_time_data[window]["Endtime"]):
                     windowwise_time_data[window]["Endtime"] = times["Endtime"]
                 time_data[master_name][window] = times
+            for window, urgencies in u_counts.items():
+                for key in urgencies:
+                    for urgency, count in urgencies[key].items():
+                        urgency_counts[master_name][window][key][urgency] += count
+                        total_urgency[window][key][urgency] += count
             for window, opcode_data in o_counts.items():
                 for opcode, count in opcode_data.items():
                     opcode_counts[window][opcode] += count
@@ -76,23 +88,28 @@ def processTestFolder(directory, test_name):
         df_main = pd.DataFrame.from_dict(sorted_master_data, orient="index").fillna(0)
         df_totals = pd.DataFrame.from_dict(sorted_total_read_write, orient="index").fillna(0)
         df_opcode = pd.DataFrame.from_dict(opcode_summary, orient="index", columns=["OPCODE"]).fillna("")
-        df_time = pd.DataFrame.from_dict(sorted_windowwise_time_data, orient="index").fillna(0)  
-        df_main = pd.concat([df_main, df_totals, df_opcode, df_time], axis=1)
-        df_main = df_main.sort_index(key=lambda x: x.str.extract(r'(\d+)')[0].astype(int))
+        df_time = pd.DataFrame.from_dict(sorted_windowwise_time_data, orient="index").fillna(0)
+        df_urgency = pd.DataFrame.from_dict({
+            window: {"REQ_Urgency": ", ".join([f"{urg}:{cnt}" for urg, cnt in sorted(total_urgency[window]["REQ_Urgency"].items())]),
+                     "RES_Urgency": ", ".join([f"{urg}:{cnt}" for urg, cnt in sorted(total_urgency[window]["RES_Urgency"].items())])}
+            for window in total_urgency
+        }, orient="index").fillna(0)
+        df_main = pd.concat([df_main, df_totals, df_opcode, df_time, df_urgency], axis=1)
         df_main.to_excel(writer, sheet_name="Main")
-
 
         for master, window_data in transaction_counts.items():
             df_master = pd.DataFrame.from_dict({
                 w: {"READ": d["READ"], "WRITE": d["WRITE"],
                     "Starttime": time_data[master][w]["Starttime"],
-                    "Endtime": time_data[master][w]["Endtime"]} 
-                for w, d in sorted(window_data.items(), key=lambda x: int(x[0].replace("Window", "")))
+                    "Endtime": time_data[master][w]["Endtime"],
+                    "REQ_Urgency": ", ".join([f"{urg}:{cnt}" for urg, cnt in sorted(urgency_counts[master][w]["REQ_Urgency"].items())]),
+                    "RES_Urgency": ", ".join([f"{urg}:{cnt}" for urg, cnt in sorted(urgency_counts[master][w]["RES_Urgency"].items())])} 
+                for w, d in window_data.items()
             }, orient="index").fillna(0)
-            df_master.insert(0, master, df_main[master])
             df_master.to_excel(writer, sheet_name=master, index=True)
     
     print(f"Excel file created: {excel_path}")
+
 
 def BwDataToExcel():
     base_dir = os.path.dirname(os.path.abspath(__file__))
