@@ -1,0 +1,12 @@
+Window0=1.6,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=4,REQ_Urgency=6,RES_Urgency=6
+Window8=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=6,RES_Urgency=6
+Window6=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=WRITE,Opcode=4,REQ_Urgency=7,RES_Urgency=7
+Window5=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=7,RES_Urgency=7
+Window8=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=WRITE,Opcode=4,REQ_Urgency=7,RES_Urgency=7
+Window1=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=7,RES_Urgency=7
+Window3=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=WRITE,Opcode=4,REQ_Urgency=7,RES_Urgency=7
+Window9=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=3,RES_Urgency=3
+Window4=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=WRITE,Opcode=4,REQ_Urgency=3,RES_Urgency=3
+Window2=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=2,RES_Urgency=2
+Window12=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=WRITE,Opcode=4,REQ_Urgency=2,RES_Urgency=2
+Window6=0.32,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=e,REQ_Urgency=2,RES_Urgency=2

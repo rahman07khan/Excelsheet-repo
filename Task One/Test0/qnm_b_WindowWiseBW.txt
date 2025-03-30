@@ -1,0 +1,8 @@
+Window0=0.0,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=7,RES_Urgency=7
+Window25=2.54,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=7,RES_Urgency=7
+Window15=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=2,RES_Urgency=3
+Window12=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=3,RES_Urgency=4
+Window15=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=4,RES_Urgency=5
+Window8=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=5,RES_Urgency=6
+Window15=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=6,RES_Urgency=6
+Window13=1.27,Starttime=1000.575,Endtime=1773033.649,Transtype=READ,Opcode=0,REQ_Urgency=6,RES_Urgency=6
